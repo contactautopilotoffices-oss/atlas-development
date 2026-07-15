@@ -504,7 +504,6 @@ function openCard(b){
           <div class="unit-grid">
             <span>Chargeable</span><span>${u.charge.toLocaleString()} sqft</span>
             <span>Efficiency</span><span>${Math.round(u.eff*100)}%</span>
-            <span>Rent</span><span>${u.rent}</span>
             <span>Furnishing</span><span>${u.furn}</span>
             <span>Parking</span><span>${u.parking}</span>
             <span>Possession</span><span>${u.poss}</span>
@@ -555,7 +554,7 @@ function openCard(b){
       const u=units.find(u=>String(floorLevel[u.floor])===r.dataset.level);
       const fd=document.getElementById("floorDetail");
       fd.innerHTML = u? `<b>${u.floor} floor</b> — ${u.carpet.toLocaleString()} sqft carpet /
-        ${u.charge.toLocaleString()} chargeable · ${u.rent} · <span style="color:${D.FIT_COLORS[u.fit]}">${u.fit}</span>`
+        ${u.charge.toLocaleString()} chargeable · <span style="color:${D.FIT_COLORS[u.fit]}">${u.fit}</span>`
         : "No listed unit on this floor.";
     });
   });
