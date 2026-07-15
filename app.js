@@ -466,10 +466,11 @@ function drawMetroDistance(b){
   const pin=new THREE.Mesh(new THREE.SphereGeometry(4,16,12),
     new THREE.MeshStandardMaterial({color:0xd1495b,emissive:0xd1495b,emissiveIntensity:0.7}));
   pin.position.copy(c); pin.position.y=b.h+10; distGroup.add(pin);
-  const walk=Math.max(1,Math.round(b.aqua*12));       // ~12 min per km walk
+  const walk=Math.max(1,Math.round(b.aqua * 14.4));       // ~12 min/km walk on 1.2x straight-line dist
   const lblDiv=document.createElement("div"); lblDiv.className="lbl lbl-dist";
-  lblDiv.innerHTML=`<b>${b.aqua} km</b> to Aqua Line<br>~${walk} min walk`;
-  const lbl=new CSS2DObject(lblDiv); lbl.position.copy(mid); distGroup.add(lbl);
+  lblDiv.innerHTML=`<b>${b.aqua} km</b> to Aqua Line (straight-line)<br>~${walk} min walk`;
+  const lblPos = new THREE.Vector3(b.x, b.h + 28, b.z); // hover above the red pin
+  const lbl=new CSS2DObject(lblDiv); lbl.position.copy(lblPos); distGroup.add(lbl);
   scene.add(distGroup);
 }
 
@@ -521,7 +522,7 @@ function openCard(b){
     <div class="sec"><h4>Connectivity — decision-maker view</h4>
       <div class="conn">
         <div class="conn-row"><span class="ic aqua">M3</span>
-          <div><b>${b.aqua} km</b> to BKC Aqua Line (Line&nbsp;3) · ~${Math.max(1,Math.round(b.aqua*12))} min walk
+          <div><b>${b.aqua} km</b> to BKC Aqua Line (Line&nbsp;3) (straight-line) · ~${Math.max(1,Math.round(b.aqua * 14.4))} min walk
           <div class="muted">Operational since Oct 2024 · ~7 min peak frequency</div></div></div>
         <div class="conn-row"><span class="ic yellow">2B</span>
           <div>Yellow Line 2B (ITO/IL&FS/MTNL BKC) — <b>upcoming 2026–27</b>
