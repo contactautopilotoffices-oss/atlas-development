@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ATLAS by Autopilot · BKC Digital Twin</title>
+<style>
+:root{
+  --bg:#0b0f16; --panel:rgba(16,21,30,.86); --panel2:rgba(22,28,40,.92);
+  --line:rgba(255,255,255,.09); --txt:#ffffff; --mut:rgba(255,255,255,.72); --acc:#2fbf71; --aqua:#14b8c4; --yellow:#f2c200;
+  --font:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
+#scene{position:fixed;inset:0}
+.label-layer{position:absolute;top:0;left:0;pointer-events:none}
+canvas{display:block}
+
+/* Autopilot logo mark */
+.ap-logo{display:inline-block;width:260px;height:auto;filter:invert(1) brightness(2)}
+.ap-logo-sm{width:150px;height:auto}
+.logo-pulse .ap-logo{width:220px;height:auto}
+
+/* labels */
+.lbl{font-family:var(--font);font-size:11px;font-weight:600;letter-spacing:.2px;padding:2px 7px;border-radius:5px;
+  white-space:nowrap;transform:translateY(-4px);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.lbl-opt{background:rgba(47,191,113,.92);color:#04150c}
+.lbl-ctx{background:rgba(20,26,36,.7);color:var(--mut);font-weight:500;font-size:10px}
+.lbl-metro{color:#04121a;font-weight:700;font-size:10px}
+.lbl-hood{background:rgba(255,207,107,.16);color:#ffd98a;border:1px solid rgba(255,207,107,.4);font-size:10px}
+.lbl-dist{background:rgba(20,184,196,.95);color:#03121a;text-align:center;font-size:10px;line-height:1.25}
+
+/* top bar */
+#top{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;padding:12px 18px;
+  background:linear-gradient(180deg,rgba(8,11,17,.9),rgba(8,11,17,0));z-index:20;pointer-events:none}
+#brand{pointer-events:auto;display:flex;align-items:center;gap:12px}
+#brand .t{font-size:15px;font-weight:700;letter-spacing:.3px}
+#brand .s{font-size:11px;color:var(--mut);margin-top:1px}
+#top .spacer{flex:1}
+.toggles{display:flex;gap:8px;pointer-events:auto;flex-wrap:wrap}
+.tg{background:var(--panel);border:1px solid var(--line);color:var(--txt);font:inherit;font-size:12px;
+  padding:7px 12px;border-radius:8px;cursor:pointer;transition:.15s;backdrop-filter:blur(8px)}
+.tg:hover{border-color:rgba(255,255,255,.25)}
+.tg.on{background:var(--acc);color:#04150c;border-color:var(--acc);font-weight:600}
+.tg.ghost.on{background:var(--aqua);color:#03121a;border-color:var(--aqua)}
+
+/* leaderboard */
+#lb{position:fixed;left:16px;bottom:16px;top:78px;width:322px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;backdrop-filter:blur(12px);display:flex;flex-direction:column;z-index:15;overflow:hidden;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+#lb.collapsed{transform:translateX(calc(-100% - 24px))}
+#lb-collapse{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:7px;
+  background:rgba(255,255,255,.08);border:1px solid var(--line);color:#fff;font:inherit;font-size:11px;
+  cursor:pointer;display:grid;place-items:center;z-index:2;transition:.15s}
+#lb-collapse:hover{background:rgba(255,255,255,.18)}
+#lb-tab{position:fixed;left:0;top:50%;transform:translateY(-50%) translateX(-100%);z-index:15;
+  background:var(--panel);border:1px solid var(--line);border-left:none;border-radius:0 10px 10px 0;
+  padding:10px 12px 10px 8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(12px);
+  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+#lb-tab.show{transform:translateY(-50%) translateX(0)}
+#lb h3{margin:0;padding:14px 16px 6px;font-size:13px;letter-spacing:.4px}
+#lb .why{padding:0 16px 12px;font-size:11px;color:var(--mut);line-height:1.4;border-bottom:1px solid var(--line)}
+#lb .why b{color:var(--acc)}
+#lb-list{overflow-y:auto;padding:8px;flex:1}
+.lb-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:.12s}
+.lb-row:hover{background:rgba(255,255,255,.05)}
+.lb-row.active{background:rgba(47,191,113,.14);outline:1px solid rgba(47,191,113,.5)}
+.lb-rank{width:22px;height:22px;flex:none;border-radius:6px;background:rgba(255,255,255,.08);
+  display:grid;place-items:center;font-size:12px;font-weight:700}
+.lb-row:nth-child(1) .lb-rank{background:var(--acc);color:#04150c}
+.lb-main{flex:1;min-width:0}
+.lb-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-meta{font-size:10px;color:var(--mut);margin:2px 0 4px;display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.lb-bar{height:4px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.lb-bar span{display:block;height:100%;border-radius:3px}
+.lb-score{font-size:15px;font-weight:700;width:30px;text-align:right}
+
+/* winner CTA */
+#winnerBtn{margin:8px;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#2fbf71,#1d9c5a);
+  color:#04150c;font:inherit;font-weight:700;font-size:12px;cursor:pointer}
+
+/* knowledge card */
+#card{position:fixed;right:-460px;top:78px;bottom:16px;width:430px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:14px;backdrop-filter:blur(14px);z-index:16;overflow-y:auto;transition:right .45s cubic-bezier(.2,.8,.2,1);
+  box-shadow:-20px 0 60px rgba(0,0,0,.4)}
+#card.open{right:16px}
+#cardClose{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.08);border:none;color:var(--txt);
+  width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px}
+.card-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+.card-block{font-size:11px;color:var(--aqua);font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.card-title{font-size:22px;font-weight:700;margin:2px 0 6px}
+.card-rank{font-size:12px;color:var(--mut)}.card-rank b{color:var(--txt)}
+.chip{color:#04150c;font-weight:700;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:4px}
+.card-sub{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.45}
+.grade-chip{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:5px;letter-spacing:.3px}
+.grade-chip.grade-A{background:rgba(47,191,113,.22);color:#fff;border:1px solid rgba(47,191,113,.45)}
+.grade-chip.grade-B{background:rgba(242,194,0,.18);color:#fff;border:1px solid rgba(242,194,0,.4)}
+.grade-note{color:#ffd98a;font-style:italic}
+.sec{padding:14px 18px;border-bottom:1px solid var(--line)}
+.sec h4{margin:0 0 10px;font-size:12px;letter-spacing:.4px;color:#fff;text-transform:uppercase}
+.muted{color:var(--mut)}
+.units{display:flex;flex-direction:column;gap:10px}
+.unit{background:rgba(255,255,255,.03);border-left:3px solid;border-radius:8px;padding:10px 12px}
+.unit-top{font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.unit-score{font-size:11px;color:var(--mut)}
+.unit-grid{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0 6px;font-size:11px}
+.unit-grid span:nth-child(odd){color:var(--mut)}
+.unit-note{font-size:11px;color:var(--mut);line-height:1.4;font-style:italic}
+.floors-sec{display:block}
+.floorstack{display:flex;justify-content:center}
+.fl-rect{cursor:default;transition:.1s}
+.fl-rect.av{cursor:pointer}
+.fl-rect.av:hover{fill:#57d98d!important}
+.fl-rect.sel{fill:#8ff0b6!important;stroke:#fff;stroke-width:1.5}
+.floor-detail{margin-top:10px;font-size:11px;color:var(--mut);line-height:1.4}
+.conn{display:flex;flex-direction:column;gap:11px}
+.conn-row{display:flex;gap:10px;font-size:12px;line-height:1.4}
+.ic{flex:none;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:#03121a}
+.ic.aqua{background:var(--aqua)}.ic.yellow{background:var(--yellow)}
+.ic.rail{background:#c98bff;color:#160723}.ic.bus{background:#7fd0ff;color:#04121a}
+.poshwrap{display:flex;flex-wrap:wrap;gap:6px}
+.posh{font-size:11px;background:rgba(255,207,107,.12);color:#ffd98a;border:1px solid rgba(255,207,107,.3);
+  padding:3px 8px;border-radius:20px}
+.card-cta{padding:16px 18px}
+.btn-primary{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#04150c;
+  font:inherit;font-weight:700;cursor:pointer}
+
+/* legend / hint */
+#hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--mut);
+  background:var(--panel);border:1px solid var(--line);padding:7px 14px;border-radius:20px;z-index:14;backdrop-filter:blur(8px)}
+
+/* invite gate */
+#gate{position:fixed;inset:0;background:radial-gradient(circle at 50% 30%,#121d2e 0%,#0b0f16 70%);z-index:100;
+  display:grid;place-items:center;transition:opacity .6s}
+.gate-inner{width:min(400px,92vw);text-align:center;padding:24px}
+#gate .ap-logo{width:220px;height:34px;margin-bottom:18px;color:#fff}
+#gate h1{margin:0 0 6px;font-size:26px;letter-spacing:.5px}
+#gate .sub{font-size:13px;color:var(--mut);margin-bottom:28px}
+#gate .field{text-align:left;margin-bottom:12px}
+#gate label{display:block;font-size:11px;color:var(--mut);margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px}
+#gate input{width:100%;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  color:var(--txt);font:inherit;font-size:14px;outline:none;transition:.15s}
+#gate input:focus{border-color:var(--acc)}
+#gate button{width:100%;margin-top:18px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--acc),#1d9c5a);
+  color:#04150c;font:inherit;font-weight:800;font-size:14px;cursor:pointer;transition:.15s}
+#gate button:hover{transform:translateY(-1px);filter:brightness(1.1)}
+#gate .audio-opt{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--mut);cursor:pointer}
+#gate .audio-opt input{width:auto;margin:0}
+#gateErr{color:#ff7b7b;font-size:12px;margin-top:12px;min-height:18px}
+
+/* loading */
+#loading{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:50;transition:opacity .7s}
+#loading .l{text-align:center;display:flex;flex-direction:column;align-items:center;gap:22px}
+#loading .ap-logo-anim{width:160px;height:26px;color:var(--acc)}
+#loading .big{font-size:18px;font-weight:700}
+#loading .sm{font-size:12px;color:var(--mut);max-width:320px;line-height:1.5}
+#loading .dots{display:inline-block;width:18px;text-align:left}
+
+.logo-pulse{animation:logoPulse 2.4s ease-in-out infinite,logoGlow 3s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes logoGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(47,191,113,.25))}50%{filter:drop-shadow(0 0 28px rgba(47,191,113,.75))}}
+
+#err{display:none;position:fixed;inset:0;background:var(--bg);z-index:60;place-items:center;text-align:center;padding:30px}
+#err.show{display:grid}
+
+@media(max-width:920px){
+  #lb{width:250px} #card{width:92vw;right:-95vw} #card.open{right:4vw}
+  .lb-name{font-size:11px}
+  #top{padding:10px 12px}
+  .toggles{gap:6px}
+  .tg{padding:6px 9px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<!-- INVITE GATE -->
+<div id="gate">
+  <div class="gate-inner">
+    <img class="ap-logo" src="autopilot-logo-trimmed.png" alt="Autopilot">
+    <h1>ATLAS BY AUTOPILOT</h1>
+    <div class="sub">Invitation-only geospatial experience for VFS Global</div>
+    <div class="field">
+      <label>Demo ID</label>
+      <input type="text" id="gateId" value="VFSDEMOACC" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="gatePass" value="VFS1234" autocomplete="off">
+    </div>
+    <button id="gateBtn">Enter Experience</button>
+    <label class="audio-opt"><input type="checkbox" id="gateAudio" checked> Enable immersive ambient audio</label>
+    <div id="gateErr"></div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading"><div class="l">
+  <div class="logo-pulse"><img class="ap-logo" src="autopilot-logo-trimmed.png" alt="Autopilot"></div>
+  <div>
+    <div class="big">ATLAS BY AUTOPILOT</div>
+    <div class="sm" id="loadStatus">Rendering the BKC digital world · constructing geometry · elevating the metro<span class="dots">…</span></div>
+  </div>
+</div></div>
+
+<div id="top">
+  <div id="brand">
+    <img class="ap-logo ap-logo-sm" src="autopilot-logo-trimmed.png" alt="Autopilot">
+    <div>
+      <div class="t">ATLAS <span style="color:var(--mut);font-weight:400">by Autopilot · BKC Digital Twin</span></div>
+      <div class="s">Geospatial intelligence view for VFS Global · 15 Jul 2026</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="toggles">
+    <button class="tg" id="t-cine">◐ Cinematic</button>
+    <button class="tg" id="t-night">☾ Night</button>
+    <button class="tg" id="t-labels">🏷 Labels</button>
+    <button class="tg ghost" id="t-dist">📍 Metro distance</button>
+    <button class="tg" id="t-audio">🔊 Audio</button>
+    <button class="tg" id="t-reset">⟲ Reset view</button>
+  </div>
+</div>
+
+<div id="lb">
+  <button id="lb-collapse" aria-label="hide rankings">◀</button>
+  <h3>Why The Capital wins</h3>
+  <div class="why">Ranked by the workbook's feasibility formula — <b>Floor 35% · Area 30% · Connectivity 20% · Possession 15%</b>.
+    The Capital's three 1st-floor units are the only ones that meet <b>both</b> the floor and ≤2,500 sqft asks.</div>
+  <div id="lb-list"></div>
+  <button id="winnerBtn">▶ Fly to the winning property</button>
+</div>
+<div id="lb-tab">▶ Rankings</div>
+
+<div id="card"></div>
+
+<div id="hint">Click any green property · drag to orbit · scroll to zoom · right-drag to pan · WASD to roam</div>
+
+<div id="err"><div><div class="big" style="font-size:18px;font-weight:700">Couldn't load the 3D engine</div>
+  <div class="sm" style="color:var(--mut);margin-top:8px">This build streams Three.js from a CDN — connect to the internet once and reload.<br>
+  (Everything else runs locally offline after that.)</div></div></div>
+
+<script type="importmap">
+{ "imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script src="data.js"></script>
+
+<script>
+/* ---- invite gate + audio + loading orchestration ---- */
+const GATE_ID = "VFSDEMOACC";
+const GATE_PASS = "VFS1234";
+const LS_KEY = "bkc_demo_auth_v1";
+
+let audioCtx, masterGain, droneNodes = [], chimeTimer = null, audioMuted = false;
+
+function initAudio(){
+  if(audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  audioCtx = new AC();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.22;
+  masterGain.connect(audioCtx.destination);
+
+  // Low evolving drone
+  const o1 = audioCtx.createOscillator(); o1.type="sine"; o1.frequency.value=54;
+  const g1 = audioCtx.createGain(); g1.gain.value=0.55;
+  const lfo1 = audioCtx.createOscillator(); lfo1.frequency.value=0.08;
+  const lfoG1 = audioCtx.createGain(); lfoG1.gain.value=0.18;
+  o1.connect(g1); g1.connect(masterGain); lfo1.connect(lfoG1); lfoG1.connect(g1.gain);
+  o1.start(); lfo1.start();
+
+  // Mid harmonic layer
+  const o2 = audioCtx.createOscillator(); o2.type="triangle"; o2.frequency.value=110;
+  const g2 = audioCtx.createGain(); g2.gain.value=0.12;
+  const lfo2 = audioCtx.createOscillator(); lfo2.frequency.value=0.15;
+  const lfoG2 = audioCtx.createGain(); lfoG2.gain.value=0.06;
+  o2.connect(g2); g2.connect(masterGain); lfo2.connect(lfoG2); lfoG2.connect(g2.gain);
+  o2.start(); lfo2.start();
+
+  // High digital shimmer
+  const o3 = audioCtx.createOscillator(); o3.type="sine"; o3.frequency.value=220;
+  const g3 = audioCtx.createGain(); g3.gain.value=0.04;
+  o3.connect(g3); g3.connect(masterGain); o3.start();
+
+  droneNodes.push(o1,g1,o2,g2,o3,g3,lfo1,lfoG1,lfo2,lfoG2);
+
+  // Occasional chimes
+  chimeTimer = setInterval(()=>{
+    if(audioMuted || document.hidden) return;
+    if(Math.random()>0.55) return;
+    playChime();
+  }, 4200);
+}
+function playChime(){
+  if(!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const notes = [330,392,440,523,659,784,880];
+  const note = notes[Math.floor(Math.random()*notes.length)];
+  const o = audioCtx.createOscillator(); o.type="sine"; o.frequency.value=note;
+  const g = audioCtx.createGain(); g.gain.setValueAtTime(0,now);
+  g.gain.linearRampToValueAtTime(0.018,now+0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001,now+2.2);
+  const pan = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+  if(pan){ pan.pan.value = (Math.random()-0.5)*0.8; o.connect(g); g.connect(pan); pan.connect(masterGain); }
+  else { o.connect(g); g.connect(masterGain); }
+  o.start(now); o.stop(now+2.5);
+}
+function setAudio(on){
+  if(on){ initAudio(); if(audioCtx && audioCtx.state==="suspended") audioCtx.resume(); audioMuted=false; if(masterGain) masterGain.gain.setTargetAtTime(0.22,audioCtx.currentTime,0.3); }
+  else { audioMuted=true; if(masterGain) masterGain.gain.setTargetAtTime(0,audioCtx?audioCtx.currentTime:0,0.3); }
+}
+function destroyAudio(){
+  if(chimeTimer) clearInterval(chimeTimer);
+  droneNodes.forEach(n=>{ try{ n.stop?n.stop():null; n.disconnect(); }catch(e){} });
+  droneNodes=[];
+  if(audioCtx){ try{ audioCtx.close(); }catch(e){} audioCtx=null; }
+}
+
+const gate = document.getElementById("gate");
+const loading = document.getElementById("loading");
+const loadStatus = document.getElementById("loadStatus");
+const gateErr = document.getElementById("gateErr");
+const audioBtn = document.getElementById("t-audio");
+
+function fadeOut(el, remove=true){
+  el.style.opacity=0;
+  setTimeout(()=>{ if(remove) el.remove(); else el.style.display="none"; }, remove?700:800);
+}
+
+let loadDots = 0;
+const dotTimer = setInterval(()=>{
+  const d = document.querySelector("#loading .dots"); if(!d) return clearInterval(dotTimer);
+  loadDots = (loadDots+1)%4; d.textContent = "…".slice(0,loadDots) || ".";
+}, 500);
+
+function setLoadStatus(text){
+  const d = document.querySelector("#loading .dots");
+  loadStatus.innerHTML = text + (d?`<span class="dots">${d.textContent}</span>`:"");
+}
+
+function enterExperience(){
+  const id = document.getElementById("gateId").value.trim().toUpperCase();
+  const pass = document.getElementById("gatePass").value.trim();
+  // loose validation: exact id, exact pass (case-insensitive for pass)
+  if(id === GATE_ID && pass.toUpperCase() === GATE_PASS){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({id, t:Date.now()})); }catch(e){}
+    fadeOut(gate);
+    if(document.getElementById("gateAudio").checked){ setAudio(true); audioBtn.classList.add("on"); }
+    loadApp();
+  }else{
+    gateErr.textContent = "Please use ID: VFSDEMOACC  ·  Password: VFS1234";
+    document.getElementById("gatePass").value="";
+  }
+}
+
+function loadApp(){
+  setLoadStatus("Streaming Three.js engine · loading satellite intelligence");
+  const script = document.createElement("script");
+  script.type = "module";
+  script.src = "./app.js?v=7";
+  script.onerror = ()=>{ document.getElementById("err").classList.add("show"); };
+  script.onload = ()=>{
+    setLoadStatus("Digital world ready · handing over controls");
+    setTimeout(()=>fadeOut(loading), 600);
+  };
+  document.body.appendChild(script);
+}
+
+function bindGate(){
+  document.getElementById("gateBtn").addEventListener("click", enterExperience);
+  document.getElementById("gatePass").addEventListener("keydown", e=>{ if(e.key==="Enter") enterExperience(); });
+  document.getElementById("gateId").addEventListener("keydown", e=>{ if(e.key==="Enter") enterExperience(); });
+}
+
+// check cache
+let cached = null;
+try{ cached = localStorage.getItem(LS_KEY); }catch(e){}
+if(cached){
+  try{
+    const data = JSON.parse(cached);
+    if(data && data.id===GATE_ID && Date.now()-(data.t||0) < 1000*60*60*24*7){ // 7 days loose session
+      gate.remove();
+      if(document.getElementById("gateAudio").checked){ setAudio(true); audioBtn.classList.add("on"); }
+      loadApp();
+    }else{ throw new Error("expired"); }
+  }catch(e){ localStorage.removeItem(LS_KEY); bindGate(); }
+}else{
+  bindGate();
+}
+
+// audio toggle (available after scene loads too)
+audioBtn.addEventListener("click", ()=>{
+  const on = !audioBtn.classList.contains("on");
+  audioBtn.classList.toggle("on", on);
+  setAudio(on);
+});
+
+window.addEventListener("error", e=>{
+  if(String(e.message||"").match(/import|module|three|fetch/i)) document.getElementById("err").classList.add("show");
+});
+</script>
+</body>
+</html>
