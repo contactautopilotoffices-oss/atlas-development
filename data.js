@@ -36,7 +36,7 @@ const OPTIONS = [
   { rank:3, bldg:"capital", unit:"The Capital — 1st Flr (1,660 cpt)", floor:"1st", furn:"Warm-shell",
     carpet:1660, charge:2536, eff:0.655, parking:"Post inspection",
     poss:"Immediate", aqua:1.6, score:9.2, fit:"MEETS BRIEF",
-    note:"Rent unquoted — cannot be pitched until landlord quotes; keep as backup." }
+    note:"Rent unquoted — cannot be pitched until landlord quotes; keep as backup." },
   { rank:4, bldg:"naman", unit:"Naman Centre — 1st Flr", floor:"1st", furn:"Furnished (as-is)",
     carpet:3100, charge:4900, eff:0.633, parking:"5 incl. in rent",
     poss:"Immediate", aqua:1.4, score:8.68, fit:"PARTIAL",
@@ -132,7 +132,7 @@ const BUILDINGS = [
     busRoutes:"303, 310, A-310, 187, A-22, S-102",
     tenants:"Premium blue-glass Grade-A tower; marquee BKC tenants.",
     posh:["ICICI Bank BKC","Diamond Market","Bandra West"],
-    grade:"A+", gradeNote:"Marquee blue-glass tower with top-tier anchor tenants." }
+    grade:"A+", gradeNote:"Marquee blue-glass tower with top-tier anchor tenants." },
 
   { id:"vaibhav", name:"Vaibhav Chambers", block:"E Block", isOption:true, type:"tower",
     x:330, z:-210, w:48, d:48, h:60, floors:10, color:0xd0d6dc,
