@@ -1,0 +1,101 @@
+    if (reg.renderMode === "custom-model") {
+      addCustomThreeLayer(b, reg);
+      return;
+    }/* ============================================================
+   CUSTOM 3D MODEL LAYER (THREE.JS) - Phase 6
+   ============================================================ */
+function addCustomThreeLayer(b, reg) {
+  if (!THREE) {
+    setTimeout(() => addCustomThreeLayer(b, reg), 100);
+    return;
+  }
+
+  const match = footprintMatcher(b.id, b.lat, b.lng);
+  matchResults[b.id] = match;
+  const heightM = reg.heightMeters || b.h || 50;
+  
+  if (!match.feature || match.confidence === "NONE") {
+    console.warn(`[Atlas] ${b.id}: custom model requires OSM footprint, falling back.`);
+    addFallbackBox(b, reg, heightM, reg.color || b.color);
+    return;
+  }
+  
+  const coords = match.feature.geometry.coordinates[0];
+  const modelOrigin = [b.lng, b.lat];
+  const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(modelOrigin, 0);
+  const scale = modelAsMercatorCoordinate.meterInMercatorCoordinateUnits();
+  
+  const customLayer = {
+    id: `custom-3d-model-${b.id}`,
+    type: 'custom',
+    renderingMode: '3d',
+    onAdd: function (map, gl) {
+      this.camera = new THREE.Camera();
+      this.scene = new THREE.Scene();
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+      this.scene.add(ambient);
+      const directional = new THREE.DirectionalLight(0xffffff, 1.0);
+      directional.position.set(50, 100, 50).normalize();
+      this.scene.add(directional);
+
+      const shape = new THREE.Shape();
+      const R = 6378137;
+      coords.forEach((ll, i) => {
+        const x = (ll[0] - b.lng) * (Math.PI / 180) * R * Math.cos(b.lat * Math.PI / 180);
+        const y = (ll[1] - b.lat) * (Math.PI / 180) * R;
+        if(i===0) shape.moveTo(x, y);
+        else shape.lineTo(x, y);
+      });
+      
+      const geometry = new THREE.ExtrudeGeometry(shape, { depth: heightM, bevelEnabled: false });
+
+      function windowTexture(){
+        const c=document.createElement("canvas"); c.width=64;c.height=128;
+        const x=c.getContext("2d");
+        x.fillStyle="#1a2330"; x.fillRect(0,0,64,128);
+        for(let j=6;j<128;j+=12) for(let i=6;i<64;i+=14){
+          x.fillStyle = Math.random()<0.5 ? "#4f6174" : "#2a3645";
+          x.fillRect(i,j,9,7);
+        }
+        const t=new THREE.CanvasTexture(c); 
+        t.wrapS=t.wrapT=THREE.RepeatWrapping; 
+        t.repeat.set(0.04, 0.02); // Tweak to look like many windows
+        return t;
+      }
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: reg.color || b.color, roughness: 0.15, metalness: 0.55,
+        map: windowTexture()
+      });
+
+      const mesh = new THREE.Mesh(geometry, mat);
+      this.scene.add(mesh);
+      
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: map.getCanvas(),
+        context: gl,
+        antialias: true
+      });
+      this.renderer.autoClear = false;
+    },
+    render: function (gl, matrix) {
+      try {
+        const m = new THREE.Matrix4().fromArray(matrix);
+        const l = new THREE.Matrix4()
+          .makeTranslation(modelAsMercatorCoordinate.x, modelAsMercatorCoordinate.y, modelAsMercatorCoordinate.z)
+          .scale(new THREE.Vector3(scale, -scale, scale));
+            
+        this.camera.projectionMatrix = m.multiply(l);
+        this.renderer.resetState();
+        this.renderer.render(this.scene, this.camera);
+        map.triggerRepaint();
+      } catch (e) {
+        console.error("RenderError_Message: " + (e.message || String(e)));
+      }
+    }
+  };
+  
+  map.addLayer(customLayer);
+  console.log(`[Atlas] Added Custom Three.js Model for ${b.id}`);
+}

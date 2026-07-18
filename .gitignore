@@ -10,3 +10,5 @@ trim-*.ps1
 Thumbs.db
 .vscode/
 .idea/
+node_modules/
+config.js

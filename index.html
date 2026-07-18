@@ -4,6 +4,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>ATLAS by Autopilot · BKC Digital Twin</title>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+<script src="./config.js"></script>
 <style>
 :root{
   --bg:#0b0f16; --panel:rgba(16,21,30,.86); --panel2:rgba(22,28,40,.92);
@@ -12,7 +16,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
-#scene{position:fixed;inset:0}
+#map{position:fixed;inset:0}
 .label-layer{position:absolute;top:0;left:0;pointer-events:none}
 canvas{display:block}
 
@@ -174,7 +178,7 @@ canvas{display:block}
 </style>
 </head>
 <body>
-<div id="scene"></div>
+<div id="map"></div>
 
 <!-- INVITE GATE -->
 <div id="gate">
@@ -216,7 +220,7 @@ canvas{display:block}
   <div class="spacer"></div>
   <div class="toggles">
     <button class="tg" id="t-cine">◐ Cinematic</button>
-    <button class="tg" id="t-night">☾ Night</button>
+    <button class="tg" id="t-theme">🌇 Theme: Dusk</button>
     <button class="tg" id="t-labels">🏷 Labels</button>
     <button class="tg ghost" id="t-dist">📍 Metro distance</button>
     <button class="tg" id="t-audio">🔊 Audio</button>
@@ -242,6 +246,44 @@ canvas{display:block}
   <div class="sm" style="color:var(--mut);margin-top:8px">This build streams Three.js from a CDN — connect to the internet once and reload.<br>
   (Everything else runs locally offline after that.)</div></div></div>
 
+<div id="wt-overlay" style="display:none;position:fixed;inset:0;z-index:90;background:#000;">
+  <button class="btn" id="wtClose" style="position:absolute;top:20px;right:20px;z-index:100;background:rgba(0,0,0,0.8);color:#fff;border:1px solid #333;">Close Walkthrough</button>
+  
+  <div id="wt-loader" style="position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:90;color:#fff;transition:opacity 0.5s;opacity:0;pointer-events:none;">
+    <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#f0a020;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:20px;"></div>
+    <div style="font-size:14px;letter-spacing:1px;">LOADING INTERNAL VIEW...</div>
+    <div id="wt-loader-progress" style="margin-top:10px;font-size:12px;color:var(--mut);">0 / 19</div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+  </div>
+
+  <div id="wt-canvas-container" style="position:absolute;inset:0;z-index:1;"></div>
+
+  <!-- Google Maps Style Navigation Arrows -->
+  <div id="arrow-nav" style="position:absolute;bottom:0;left:0;width:100vw;height:40vh;z-index:10;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:40px;gap:20px;">
+    <div class="arrow-container forward" id="forward-arrow" style="pointer-events:auto;width:100px;height:60px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;opacity:0.5;transform:perspective(300px) rotateX(40deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,0.8));">
+      <svg viewBox="0 0 100 100" class="chevron" style="width:80px;height:80px;fill:none;stroke:rgba(255,255,255,0.9);stroke-width:8;stroke-linecap:round;stroke-linejoin:round;transition:stroke 0.3s;">
+        <polyline points="20,70 50,30 80,70" />
+      </svg>
+    </div>
+    <div class="arrow-container backward" id="backward-arrow" style="pointer-events:auto;width:100px;height:60px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;opacity:0.5;transform:perspective(300px) rotateX(40deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,0.8));">
+      <svg viewBox="0 0 100 100" class="chevron" style="width:50px;height:50px;fill:none;stroke:rgba(255,255,255,0.9);stroke-width:8;stroke-linecap:round;stroke-linejoin:round;transition:stroke 0.3s;">
+        <polyline points="20,30 50,70 80,30" />
+      </svg>
+    </div>
+    <style>
+      .arrow-container:hover:not(.disabled) { opacity:1!important; transform:perspective(300px) rotateX(20deg) scale(1.1)!important; filter:drop-shadow(0 10px 15px rgba(0,0,0,1))!important; }
+      .arrow-container.disabled { opacity:0.1!important; cursor:not-allowed!important; }
+      .arrow-container:hover:not(.disabled) .chevron { stroke:#fff!important; filter:drop-shadow(0 0 8px rgba(255,255,255,0.8))!important; }
+      #wt-overlay.show { display: block !important; }
+    </style>
+  </div>
+
+  <div id="ui-minimal" style="position:absolute;top:20px;left:20px;z-index:10;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);padding:8px 16px;border-radius:20px;font-variant-numeric:tabular-nums;font-weight:600;font-size:0.9rem;pointer-events:none;">
+    <span id="wt-progress-text">1 / 19</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script type="importmap">
 { "imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -249,6 +291,7 @@ canvas{display:block}
 }}
 </script>
 <script src="data.js"></script>
+<script src="buildings_geo.js"></script>
 
 <script>
 /* ---- invite gate + audio + loading orchestration ---- */
@@ -360,13 +403,13 @@ function enterExperience(){
 }
 
 function loadApp(){
-  setLoadStatus("Streaming Three.js engine · loading satellite intelligence");
+  setLoadStatus("Streaming Mapbox engine · loading satellite intelligence");
   const script = document.createElement("script");
-  script.type = "module";
-  script.src = "./app.js?v=7";
+  script.src = "./mapbox_app.js?v=11";
   script.onerror = ()=>{ document.getElementById("err").classList.add("show"); };
   script.onload = ()=>{
     setLoadStatus("Digital world ready · handing over controls");
+    if(window.__initMapboxApp) window.__initMapboxApp();
     setTimeout(()=>fadeOut(loading), 600);
   };
   document.body.appendChild(script);
@@ -385,8 +428,9 @@ if(cached){
   try{
     const data = JSON.parse(cached);
     if(data && data.id===GATE_ID && Date.now()-(data.t||0) < 1000*60*60*24*7){ // 7 days loose session
+      const audioChecked = document.getElementById("gateAudio") ? document.getElementById("gateAudio").checked : false;
       gate.remove();
-      if(document.getElementById("gateAudio").checked){ setAudio(true); audioBtn.classList.add("on"); }
+      if(audioChecked){ setAudio(true); audioBtn.classList.add("on"); }
       loadApp();
     }else{ throw new Error("expired"); }
   }catch(e){ localStorage.removeItem(LS_KEY); bindGate(); }

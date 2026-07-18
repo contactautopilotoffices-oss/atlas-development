@@ -84,10 +84,28 @@ const OPTIONS = [
    isOption:true buildings are selectable "properties". Others are context/landmarks.
    type drives the mesh builder in app.js.
 --------------------------------------------------------------------------- */
+const GEO_ORIGIN = { lat: 19.0625, lon: 72.8624 };
+function lngToMercX(lon) { return lon / 360 + 0.5; }
+function latToMercY(lat) { return 0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI); }
+const originMercX = lngToMercX(GEO_ORIGIN.lon);
+const originMercY = latToMercY(GEO_ORIGIN.lat);
+const MER_SCALE = 1 / (40075016.68 * Math.cos(GEO_ORIGIN.lat * Math.PI / 180));
+
+function geoToMeters(lat, lon) {
+  const mx = lngToMercX(lon);
+  const my = latToMercY(lat);
+  return {
+    lat: lat,
+    lng: lon,
+    x: (mx - originMercX) / MER_SCALE,
+    z: (my - originMercY) / MER_SCALE
+  };
+}
+
 const BUILDINGS = [
   // ---- VFS option buildings (G-Block core + fringe) ----
   { id:"capital", name:"The Capital", block:"G Block", isOption:true, type:"oval",
-    x:-40, z:40, w:80, d:52, h:96, floors:19, color:0x9fd8b8, aqua:0.79,
+    ...geoToMeters(19.063220, 72.861896), w:78, d:50, h:96, floors:19, color:0x347055, aqua:0.63,
     bandra:3.4, busStops:"Bharat Diamond Bourse / ICICI Bank BKC",
     busRoutes:"303, 310, A-310, 187, A-22, S-102, C-505 + BKC AC shuttles",
     tenants:"Grade-A tower by James Law Cybertecture; curved green-glass 'intelligent building'.",
@@ -95,7 +113,7 @@ const BUILDINGS = [
     grade:"A+", gradeNote:"Iconic curved-glass landmark; among BKC's most photographed addresses." },
 
   { id:"naman", name:"Naman Centre", block:"G Block", isOption:true, type:"tower",
-    x:-150, z:-30, w:52, d:52, h:86, floors:18, color:0xbfc9d6, aqua:0.845,
+    ...geoToMeters(19.0636, 72.8625), w:44, d:44, h:60, floors:12, color:0x8fa3b5, aqua:0.58,
     bandra:3.3, busStops:"Naman Center BKC / Bank of India BKC (named stop at door)",
     busRoutes:"187 + BKC AC shuttle routes",
     tenants:"Corporate tower, named BEST stop at the door.",
@@ -103,7 +121,7 @@ const BUILDINGS = [
     grade:"A", gradeNote:"Established Grade-A corporate address, well-run building management." },
 
   { id:"parinee", name:"Parinee Crescenzo", block:"G Block", isOption:true, type:"slab",
-    x:60, z:-120, w:46, d:58, h:158, floors:21, color:0xa9c4d8, aqua:1.42,
+    ...geoToMeters(19.061031, 72.868160), w:85, d:45, h:85, floors:20, color:0x354f52, aqua:0.87,
     bandra:3.3, busStops:"Crescenzo / MCA Complex BKC (named stop at door)",
     busRoutes:"187 + BKC AC shuttle routes via MCA–Trident loop",
     tenants:"Tall G-Block tower overlooking the MCA ground; best ground-floor frontage.",
@@ -111,7 +129,7 @@ const BUILDINGS = [
     grade:"A+", gradeNote:"Newest tall-tower stock in G-Block; premium ground-floor retail frontage." },
 
   { id:"adani", name:"Adani Inspire", block:"G Block", isOption:true, type:"tower",
-    x:210, z:-70, w:58, d:58, h:118, floors:20, color:0xcdd3da, aqua:0.62,
+    ...geoToMeters(19.0655, 72.8644), w:58, d:58, h:118, floors:20, color:0xcdd3da, aqua:0.62,
     bandra:3.3, busStops:"MCA Complex / Bank of Baroda BKC",
     busRoutes:"187 + BKC AC shuttles",
     tenants:"Large-floor-plate tower (formerly Inspire BKC).",
@@ -119,7 +137,7 @@ const BUILDINGS = [
     grade:"A+", gradeNote:"Large efficient floor plates under Adani stewardship; institutional-grade specs." },
 
   { id:"laxmi", name:"Laxmi Towers", block:"G Block", isOption:true, type:"twin",
-    x:-190, z:120, w:60, d:40, h:74, floors:14, color:0xc7ccd2, aqua:1.0,
+    ...geoToMeters(19.063071, 72.864041), w:60, d:40, h:74, floors:14, color:0xc7ccd2, aqua:1.0,
     bandra:3.4, busStops:"Laxmi Tower BKC (named stop at door)",
     busRoutes:"187, BKC-9/10/11/14 AC routes via Diamond Market",
     tenants:"Twin-block office address near Diamond Market.",
@@ -127,7 +145,7 @@ const BUILDINGS = [
     grade:"B+", gradeNote:"Older G-Block stock; bare-shell floors need fit-out investment." },
 
   { id:"onebkc", name:"One BKC", block:"G Block", isOption:true, type:"tower",
-    x:150, z:60, w:56, d:56, h:132, floors:20, color:0x8fb4d9, aqua:1.08,
+    ...geoToMeters(19.0606, 72.8650), w:56, d:56, h:132, floors:20, color:0x8fb4d9, aqua:1.08,
     bandra:3.2, busStops:"Diamond Market / ICICI Bank BKC",
     busRoutes:"303, 310, A-310, 187, A-22, S-102",
     tenants:"Premium blue-glass Grade-A tower; marquee BKC tenants.",
@@ -135,15 +153,24 @@ const BUILDINGS = [
     grade:"A+", gradeNote:"Marquee blue-glass tower with top-tier anchor tenants." },
 
   { id:"vaibhav", name:"Vaibhav Chambers", block:"E Block", isOption:true, type:"tower",
-    x:330, z:-210, w:48, d:48, h:60, floors:10, color:0xd0d6dc, aqua:0.175,
+    ...geoToMeters(19.0608, 72.8643), w:48, d:48, h:60, floors:10, color:0xd0d6dc, aqua:0.175,
     bandra:2.4, busStops:"MMRDA / Family Court BKC",
     busRoutes:"303, A-310, C-505, C-54, 310",
     tenants:"Closest to the Aqua Line — 0.175 km / ~2 min walk to BKC station.",
     posh:["Aqua Line BKC station","MMRDA","Family Court"],
     grade:"A", gradeNote:"Solid Grade-A E-Block stock; unbeatable metro-door proximity." },
 
-  { id:"vibgyor", name:"Vibgyor Tower", block:"C Block", isOption:true, type:"tower",
-    x:-150, z:270, w:50, d:50, h:80, floors:16, color:0xd6c9b6, aqua:1.5,
+  { id:"bkcstation", name:"BKC Metro Station", block:"E Block", isOption:true, type:"slab",
+    ...geoToMeters(19.0610, 72.8612), w:50, d:30, h:15, floors:2, color:0x14b8c4, aqua:0.0,
+    bandra:2.0, busStops:"MMRDA",
+    busRoutes:"303, 310",
+    tenants:"Mumbai Metro Line 3 (Aqua Line) underground station.",
+    posh:["ITO BKC","Aqua Line"],
+    grade:"A", gradeNote:"Major transit hub." },
+
+
+  { id:"vibgyor", name:"Vibgyor Tower", block:"G Block", isOption:true, type:"slab",
+    ...geoToMeters(19.0645, 72.8643), w:65, d:40, h:70, floors:16, color:0x7a6352, aqua:0.95,
     bandra:3.6, busStops:"Hotel Trident BKC / Bharat Diamond Bourse",
     busRoutes:"187 + BKC AC shuttles",
     tenants:"Office tower beside the Trident hotel cluster.",
@@ -151,7 +178,7 @@ const BUILDINGS = [
     grade:"A", gradeNote:"Good Grade-A specs, but lowest space-efficiency (60%) of the whole set." },
 
   { id:"pittie", name:"Pittie Chambers", block:"Outside BKC core (~4 km)", isOption:true, type:"tower",
-    x:640, z:420, w:44, d:44, h:56, floors:9, color:0xb9a48c, aqua:2.3,
+    ...geoToMeters(19.05, 72.83), w:44, d:44, h:56, floors:9, color:0xb9a48c, aqua:2.3,
     bandra:5.7, busStops:"Outside BKC stop cluster — verify locally",
     busRoutes:"N/A — outside BKC core",
     tenants:"Fort/CSMT-side address, ~4 km from BKC Aqua — outside the core the client asked for.",
@@ -159,14 +186,14 @@ const BUILDINGS = [
     grade:"B", gradeNote:"Older Fort-area commercial stock; 100% efficiency but well outside the BKC micro-market." },
 
   // ---- Context landmarks (not selectable options) ----
-  { id:"jio", name:"Jio World Convention Centre", block:"G Block", type:"convention",
-    x:70, z:210, w:150, d:110, h:44, color:0xe8e2d6 },
+  { id:"jioconv", name:"Jio World Convention Centre", block:"G Block", isOption:true, type:"convention",
+    ...geoToMeters(19.063503, 72.867442), w:160, d:120, h:45, floors:6, color:0xdecab3, aqua:1.4 },
   { id:"jiocentre", name:"Jio World Centre", block:"G Block", type:"tower",
     x:180, z:250, w:60, d:60, h:150, color:0xbfc6cf },
   { id:"nse", name:"NSE — Exchange Plaza", block:"G Block", type:"block",
     x:-70, z:-180, w:70, d:60, h:58, color:0xc4cad1 },
   { id:"sebi", name:"SEBI Bhavan", block:"G Block", type:"block",
-    x:100, z:-210, w:56, d:56, h:52, color:0xccd2d8 },
+    x:100, z:-210, w:56, d:56, h:52, color:0xc3cad8 },
   { id:"icici", name:"ICICI Bank BKC", block:"G Block", type:"block",
     x:-230, z:-70, w:60, d:52, h:70, color:0xd08a6a },
   { id:"bob", name:"Bank of Baroda", block:"G Block", type:"block",
