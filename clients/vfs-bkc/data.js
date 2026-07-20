@@ -154,7 +154,7 @@ const BUILDINGS = [
     grade:"A+", gradeNote:"Marquee blue-glass tower with top-tier anchor tenants." },
 
   { id:"vaibhav", name:"Vaibhav Chambers", block:"E Block", isOption:true, type:"tower",
-    ...geoToMeters(19.0608, 72.8643), w:48, d:48, h:60, floors:10, color:0xd0d6dc, aqua:0.175,
+    ...geoToMeters(19.0610, 72.8565), w:48, d:48, h:60, floors:10, color:0xd0d6dc, aqua:0.175,
     bandra:2.4, busStops:"MMRDA / Family Court BKC",
     busRoutes:"303, A-310, C-505, C-54, 310",
     tenants:"Closest to the Aqua Line — 0.175 km / ~2 min walk to BKC station.",

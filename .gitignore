@@ -12,3 +12,9 @@ Thumbs.db
 .idea/
 node_modules/
 config.js
+
+# client proposal (third-party PII) & bulky source
+*.pdf
+prd.txt
+osm.xml
+osm2.xml

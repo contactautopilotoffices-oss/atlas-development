@@ -2,21 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
 <title>ATLAS by Autopilot · BKC Digital Twin</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
 <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 <script src="./config.js"></script>
 <style>
 :root{
-  --bg:#0b0f16; --panel:rgba(16,21,30,.86); --panel2:rgba(22,28,40,.92);
+  --bg:#0b0f16; --panel:rgba(16,21,30,.60); --panel2:rgba(22,28,40,.68);
   --line:rgba(255,255,255,.09); --txt:#ffffff; --mut:rgba(255,255,255,.72); --acc:#2fbf71; --aqua:#14b8c4; --yellow:#f2c200;
   --font:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
-#map{position:fixed;inset:0}
+#map{position:fixed;inset:0;touch-action:none}
 .label-layer{position:absolute;top:0;left:0;pointer-events:none}
 canvas{display:block}
 
@@ -50,8 +50,8 @@ canvas{display:block}
 
 /* leaderboard */
 #lb{position:fixed;left:16px;bottom:16px;top:78px;width:322px;background:var(--panel);border:1px solid var(--line);
-  border-radius:14px;backdrop-filter:blur(12px);display:flex;flex-direction:column;z-index:15;overflow:hidden;
-  transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  border-radius:14px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;flex-direction:column;z-index:15;overflow:hidden;
+  box-shadow:0 16px 48px rgba(0,0,0,.35);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
 #lb.collapsed{transform:translateX(calc(-100% - 24px))}
 #lb-collapse{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:7px;
   background:rgba(255,255,255,.08);border:1px solid var(--line);color:#fff;font:inherit;font-size:11px;
@@ -74,11 +74,23 @@ canvas{display:block}
 .lb-row:nth-child(1) .lb-rank{background:var(--acc);color:#04150c}
 .lb-main{flex:1;min-width:0}
 .lb-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-star{display:none;color:var(--acc);margin-left:5px;font-size:11px}
+.lb-row.shortlisted .lb-star{display:inline}
+.lb-row.shortlisted{background:rgba(47,191,113,.06)}
 .lb-meta{font-size:10px;color:var(--mut);margin:2px 0 4px;display:flex;align-items:center;gap:5px}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .lb-bar{height:4px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
 .lb-bar span{display:block;height:100%;border-radius:3px}
 .lb-score{font-size:15px;font-weight:700;width:30px;text-align:right}
+/* thin rows — the 7-point meta reveals on hover/selection, not always */
+.lb-row .lb-meta,.lb-row .lb-bar{max-height:0;opacity:0;overflow:hidden;margin:0;transition:max-height .18s ease,opacity .18s ease,margin .18s ease}
+.lb-row:hover .lb-meta,.lb-row.active .lb-meta{max-height:22px;opacity:1;margin:2px 0 4px}
+.lb-row:hover .lb-bar,.lb-row.active .lb-bar{max-height:6px;opacity:1}
+/* podium first frame — the long tail opens on demand */
+#lb-list:not(.expanded) .lb-extra{display:none}
+#lb-expand{margin:6px 8px 10px;padding:8px;border:1px dashed var(--line);border-radius:8px;background:transparent;
+  color:var(--mut);font:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:.15s}
+#lb-expand:hover{color:#fff;border-color:rgba(255,255,255,.3)}
 
 /* winner CTA */
 #winnerBtn{margin:8px;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#2fbf71,#1d9c5a);
@@ -86,11 +98,27 @@ canvas{display:block}
 
 /* knowledge card */
 #card{position:fixed;right:-460px;top:78px;bottom:16px;width:430px;background:var(--panel2);border:1px solid var(--line);
-  border-radius:14px;backdrop-filter:blur(14px);z-index:16;overflow-y:auto;transition:right .45s cubic-bezier(.2,.8,.2,1);
+  border-radius:14px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:16;overflow-y:auto;transition:right .45s cubic-bezier(.2,.8,.2,1);
   box-shadow:-20px 0 60px rgba(0,0,0,.4)}
 #card.open{right:16px}
 #cardClose{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.08);border:none;color:var(--txt);
   width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px}
+
+/* COMPACT MODE — the landing state. Small, bottom-left, out of the building's
+   way. "View Details" expands it into the full right-side panel above. */
+#card.compact{position:fixed;left:16px;right:auto;top:auto;bottom:88px;width:290px;
+  max-height:none;border-radius:16px;transition:none}
+#card.compact .card-head{padding:14px 16px 10px;border-bottom:none}
+#card.compact .card-title{font-size:17px;margin:2px 0 4px}
+#card.compact .card-sub,#card.compact .grade-note{display:none}
+#card.compact .detail-sections,#card.compact .card-cta{display:none}
+#card.compact .compact-cta{display:flex;gap:8px;padding:0 16px 16px}
+#card.compact .compact-cta button{flex:1;padding:9px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;border:none}
+#card.compact .compact-cta .btn-explore{background:var(--acc);color:#04150c}
+#card.compact .compact-cta .btn-walk{background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--line)}
+.compact-cta{display:none}
+#card:not(.compact) .compact-cta{display:none !important}
 .card-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}
 .card-block{font-size:11px;color:var(--aqua);font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .card-title{font-size:22px;font-weight:700;margin:2px 0 6px}
@@ -134,6 +162,10 @@ canvas{display:block}
 #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--mut);
   background:var(--panel);border:1px solid var(--line);padding:7px 14px;border-radius:20px;z-index:14;backdrop-filter:blur(8px)}
 
+/* metro walking chip — strip Mapbox's default white popup chrome (Google-style clean chip) */
+.metro-dist-popup .mapboxgl-popup-content{background:transparent;padding:0;box-shadow:none;border-radius:0}
+.metro-dist-popup .mapboxgl-popup-tip{display:none}
+
 /* invite gate */
 #gate{position:fixed;inset:0;background:radial-gradient(circle at 50% 30%,#121d2e 0%,#0b0f16 70%);z-index:100;
   display:grid;place-items:center;transition:opacity .6s}
@@ -149,8 +181,6 @@ canvas{display:block}
 #gate button{width:100%;margin-top:18px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--acc),#1d9c5a);
   color:#04150c;font:inherit;font-weight:800;font-size:14px;cursor:pointer;transition:.15s}
 #gate button:hover{transform:translateY(-1px);filter:brightness(1.1)}
-#gate .audio-opt{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--mut);cursor:pointer}
-#gate .audio-opt input{width:auto;margin:0}
 #gateErr{color:#ff7b7b;font-size:12px;margin-top:12px;min-height:18px}
 
 /* loading */
@@ -170,12 +200,14 @@ canvas{display:block}
 
 @media(max-width:920px){
   #lb{width:250px} #card{width:92vw;right:-95vw} #card.open{right:4vw}
+  #card.compact{left:4vw;width:92vw;bottom:78px}
   .lb-name{font-size:11px}
   #top{padding:10px 12px}
   .toggles{gap:6px}
   .tg{padding:6px 9px;font-size:11px}
 }
 </style>
+
 </head>
 <body>
 <div id="map"></div>
@@ -185,7 +217,7 @@ canvas{display:block}
   <div class="gate-inner">
     <img class="ap-logo" src="autopilot-logo-trimmed.png" alt="Autopilot">
     <h1>ATLAS BY AUTOPILOT</h1>
-    <div class="sub">Invitation-only geospatial experience for VFS Global</div>
+    <div class="sub">Invitation-only geospatial experience</div>
     <div class="field">
       <label>Demo ID</label>
       <input type="text" id="gateId" autocomplete="off">
@@ -195,7 +227,6 @@ canvas{display:block}
       <input type="password" id="gatePass" autocomplete="off">
     </div>
     <button id="gateBtn">Enter Experience</button>
-    <label class="audio-opt"><input type="checkbox" id="gateAudio" checked> Enable immersive ambient audio</label>
     <div id="gateErr"></div>
   </div>
 </div>
@@ -220,10 +251,11 @@ canvas{display:block}
   <div class="spacer"></div>
   <div class="toggles">
     <button class="tg" id="t-cine">◐ Cinematic</button>
-    <button class="tg" id="t-theme">🌇 Theme: Dusk</button>
+    <button class="tg" id="t-theme">🌅 Theme: Dawn</button>
     <button class="tg" id="t-labels">🏷 Labels</button>
     <button class="tg ghost" id="t-dist">📍 Metro distance</button>
-    <button class="tg" id="t-audio">🔊 Audio</button>
+    <button class="tg" id="t-traffic">🚗 Traffic</button>
+    <button class="tg ghost" id="t-filters">⚖ Brief</button>
     <button class="tg" id="t-reset">⟲ Reset view</button>
   </div>
 </div>
@@ -240,7 +272,7 @@ canvas{display:block}
 
 <div id="card"></div>
 
-<div id="hint">Click any green property · drag to orbit · scroll to zoom · right-drag to pan · WASD to roam</div>
+<div id="hint">Click any property · two-finger drag pans · pinch zooms · right-drag orbits</div>
 
 <div id="err"><div><div class="big" style="font-size:18px;font-weight:700">Couldn't load the 3D engine</div>
   <div class="sm" style="color:var(--mut);margin-top:8px">This build streams Three.js from a CDN — connect to the internet once and reload.<br>
@@ -290,86 +322,70 @@ canvas{display:block}
   "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 }}
 </script>
-<script src="data.js"></script>
-<script src="buildings_geo.js"></script>
+<script src="clients/manifest.js"></script>
+<script>
+/* ---- LEGACY CLIENT SLUG from query param (optional) ---- */
+(function(){
+  var slug = new URLSearchParams(location.search).get("client");
+  if(slug && /^[a-z0-9-]+$/.test(slug)) window.CLIENT_SLUG = slug;
+})();
+</script>
+<script src="roads_bkc.js"></script>
+<script src="assets.js"></script>
+<script src="world_layer.js"></script>
+<script src="metro_line3.js"></script>
 
 <script>
-/* ---- invite gate + audio + loading orchestration ---- */
-const GATE_ID = "VFSDEMOACC";
-const GATE_PASS = "VFS1234";
-const LS_KEY = "bkc_demo_auth_v1";
+/* ---- invite gate + loading orchestration ---- */
+const LS_KEY = "atlas_auth";
+const MANIFEST = window.CLIENT_MANIFEST || {};
 
-let audioCtx, masterGain, droneNodes = [], chimeTimer = null, audioMuted = false;
-
-function initAudio(){
-  if(audioCtx) return;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if(!AC) return;
-  audioCtx = new AC();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.22;
-  masterGain.connect(audioCtx.destination);
-
-  // Low evolving drone
-  const o1 = audioCtx.createOscillator(); o1.type="sine"; o1.frequency.value=54;
-  const g1 = audioCtx.createGain(); g1.gain.value=0.55;
-  const lfo1 = audioCtx.createOscillator(); lfo1.frequency.value=0.08;
-  const lfoG1 = audioCtx.createGain(); lfoG1.gain.value=0.18;
-  o1.connect(g1); g1.connect(masterGain); lfo1.connect(lfoG1); lfoG1.connect(g1.gain);
-  o1.start(); lfo1.start();
-
-  // Mid harmonic layer
-  const o2 = audioCtx.createOscillator(); o2.type="triangle"; o2.frequency.value=110;
-  const g2 = audioCtx.createGain(); g2.gain.value=0.12;
-  const lfo2 = audioCtx.createOscillator(); lfo2.frequency.value=0.15;
-  const lfoG2 = audioCtx.createGain(); lfoG2.gain.value=0.06;
-  o2.connect(g2); g2.connect(masterGain); lfo2.connect(lfoG2); lfoG2.connect(g2.gain);
-  o2.start(); lfo2.start();
-
-  // High digital shimmer
-  const o3 = audioCtx.createOscillator(); o3.type="sine"; o3.frequency.value=220;
-  const g3 = audioCtx.createGain(); g3.gain.value=0.04;
-  o3.connect(g3); g3.connect(masterGain); o3.start();
-
-  droneNodes.push(o1,g1,o2,g2,o3,g3,lfo1,lfoG1,lfo2,lfoG2);
-
-  // Occasional chimes
-  chimeTimer = setInterval(()=>{
-    if(audioMuted || document.hidden) return;
-    if(Math.random()>0.55) return;
-    playChime();
-  }, 4200);
+function lookupClient(id){
+  return MANIFEST[id && id.toUpperCase()] || null;
 }
-function playChime(){
-  if(!audioCtx) return;
-  const now = audioCtx.currentTime;
-  const notes = [330,392,440,523,659,784,880];
-  const note = notes[Math.floor(Math.random()*notes.length)];
-  const o = audioCtx.createOscillator(); o.type="sine"; o.frequency.value=note;
-  const g = audioCtx.createGain(); g.gain.setValueAtTime(0,now);
-  g.gain.linearRampToValueAtTime(0.018,now+0.08);
-  g.gain.exponentialRampToValueAtTime(0.0001,now+2.2);
-  const pan = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
-  if(pan){ pan.pan.value = (Math.random()-0.5)*0.8; o.connect(g); g.connect(pan); pan.connect(masterGain); }
-  else { o.connect(g); g.connect(masterGain); }
-  o.start(now); o.stop(now+2.5);
+
+/* Dynamically load a client's config/data/geo scripts. Returns Promise. */
+function loadClientScripts(slug){
+  return new Promise((resolve, reject) => {
+    window.CLIENT_SLUG = slug;
+    const files = ["config","data","geo"].map(f => "clients/"+slug+"/"+f+".js");
+    let loaded = 0, failed = false;
+    function onLoad(){
+      loaded++;
+      if(loaded === files.length) resolve();
+    }
+    files.forEach(src => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = onLoad;
+      s.onerror = () => {
+        if(!failed){ failed = true; reject(new Error("Failed to load "+src)); }
+      };
+      document.head.appendChild(s);
+    });
+  });
 }
-function setAudio(on){
-  if(on){ initAudio(); if(audioCtx && audioCtx.state==="suspended") audioCtx.resume(); audioMuted=false; if(masterGain) masterGain.gain.setTargetAtTime(0.22,audioCtx.currentTime,0.3); }
-  else { audioMuted=true; if(masterGain) masterGain.gain.setTargetAtTime(0,audioCtx?audioCtx.currentTime:0,0.3); }
-}
-function destroyAudio(){
-  if(chimeTimer) clearInterval(chimeTimer);
-  droneNodes.forEach(n=>{ try{ n.stop?n.stop():null; n.disconnect(); }catch(e){} });
-  droneNodes=[];
-  if(audioCtx){ try{ audioCtx.close(); }catch(e){} audioCtx=null; }
+
+/* Apply client branding/panel text after config is loaded */
+function applyClientText(){
+  const _C = window.CLIENT || {};
+  // Each assignment is null-guarded independently: on a CACHED session the gate
+  // is already removed before this runs, and a single null selector must NOT
+  // abort the rest (that bug left Flipkart data showing VFS branding).
+  const setTxt = (sel, val, html) => { const el = document.querySelector(sel); if(el && val != null){ if(html) el.innerHTML = val; else el.textContent = val; } };
+  try{
+    if(_C.gate) setTxt("#gate .sub", _C.gate.sub);
+    if(_C.brand){ setTxt("#brand .t", _C.brand.title, true); setTxt("#brand .s", _C.brand.sub); }
+    if(_C.lb){ setTxt("#lb h3", _C.lb.title); setTxt("#lb .why", _C.lb.why, true); }
+    setTxt("#winnerBtn", _C.winnerBtnText);
+    setTxt("#hint", _C.hint);
+  }catch(e){ console.warn("[Atlas] client text apply:", e); }
 }
 
 const gate = document.getElementById("gate");
 const loading = document.getElementById("loading");
 const loadStatus = document.getElementById("loadStatus");
 const gateErr = document.getElementById("gateErr");
-const audioBtn = document.getElementById("t-audio");
 
 function fadeOut(el, remove=true){
   el.style.opacity=0;
@@ -390,29 +406,35 @@ function setLoadStatus(text){
 function enterExperience(){
   const id = document.getElementById("gateId").value.trim().toUpperCase();
   const pass = document.getElementById("gatePass").value.trim();
-  // loose validation: exact id, exact pass (case-insensitive for pass)
-  if(id === GATE_ID && pass.toUpperCase() === GATE_PASS){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({id, t:Date.now()})); }catch(e){}
+  const client = lookupClient(id);
+  if(client && pass.toUpperCase() === client.pass.toUpperCase()){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({id, slug: client.slug, t:Date.now()})); }catch(e){}
     fadeOut(gate);
-    if(document.getElementById("gateAudio").checked){ setAudio(true); audioBtn.classList.add("on"); }
-    loadApp();
+    startAppForSlug(client.slug);
   }else{
-    gateErr.textContent = "Please use ID: VFSDEMOACC  ·  Password: VFS1234";
+    gateErr.textContent = "Invalid Demo ID or password";
     document.getElementById("gatePass").value="";
   }
 }
 
-function loadApp(){
-  setLoadStatus("Streaming Mapbox engine · loading satellite intelligence");
-  const script = document.createElement("script");
-  script.src = "./mapbox_app.js?v=11";
-  script.onerror = ()=>{ document.getElementById("err").classList.add("show"); };
-  script.onload = ()=>{
-    setLoadStatus("Digital world ready · handing over controls");
-    if(window.__initMapboxApp) window.__initMapboxApp();
-    setTimeout(()=>fadeOut(loading), 600);
-  };
-  document.body.appendChild(script);
+function startAppForSlug(slug){
+  setLoadStatus("Loading client data · " + slug);
+  loadClientScripts(slug).then(() => {
+    applyClientText();
+    setLoadStatus("Streaming Mapbox engine · loading satellite intelligence");
+    const script = document.createElement("script");
+    script.src = "./mapbox_app.js?v=12";
+    script.onerror = ()=>{ document.getElementById("err").classList.add("show"); };
+    script.onload = ()=>{
+      setLoadStatus("Digital world ready · handing over controls");
+      if(window.__initMapboxApp) window.__initMapboxApp();
+      setTimeout(()=>fadeOut(loading), 600);
+    };
+    document.body.appendChild(script);
+  }).catch(err => {
+    console.error(err);
+    gateErr.textContent = "Could not load client experience";
+  });
 }
 
 function bindGate(){
@@ -427,23 +449,15 @@ try{ cached = localStorage.getItem(LS_KEY); }catch(e){}
 if(cached){
   try{
     const data = JSON.parse(cached);
-    if(data && data.id===GATE_ID && Date.now()-(data.t||0) < 1000*60*60*24*7){ // 7 days loose session
-      const audioChecked = document.getElementById("gateAudio") ? document.getElementById("gateAudio").checked : false;
+    const client = lookupClient(data.id);
+    if(client && data.slug === client.slug && Date.now()-(data.t||0) < 1000*60*60*24*7){ // 7 days loose session
       gate.remove();
-      if(audioChecked){ setAudio(true); audioBtn.classList.add("on"); }
-      loadApp();
+      startAppForSlug(client.slug);
     }else{ throw new Error("expired"); }
   }catch(e){ localStorage.removeItem(LS_KEY); bindGate(); }
 }else{
   bindGate();
 }
-
-// audio toggle (available after scene loads too)
-audioBtn.addEventListener("click", ()=>{
-  const on = !audioBtn.classList.contains("on");
-  audioBtn.classList.toggle("on", on);
-  setAudio(on);
-});
 
 window.addEventListener("error", e=>{
   if(String(e.message||"").match(/import|module|three|fetch/i)) document.getElementById("err").classList.add("show");
