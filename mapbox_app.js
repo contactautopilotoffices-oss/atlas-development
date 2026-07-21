@@ -848,6 +848,14 @@ async function addGltfModel(b, reg) {
           ms.forEach(m => {
             if (m.metalness !== undefined) m.metalness = Math.min(m.metalness ?? 0, 0.15);
             if (m.roughness !== undefined) m.roughness = Math.max(m.roughness ?? 1, 0.75);
+            // AI/Tripo exports ship single-sided faces with inconsistent normals:
+            // any wall whose normal faces away gets back-face culled, so you see
+            // straight through the tower ("transparent from inside"). Force solid,
+            // double-sided, opaque rendering so every face draws from both sides.
+            m.side = THREE.DoubleSide;
+            m.transparent = false;
+            m.opacity = 1;
+            m.depthWrite = true;
             m.needsUpdate = true;
           });
         });
