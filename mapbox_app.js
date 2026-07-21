@@ -5,7 +5,9 @@
    ============================================================================ */
 
 const D = window.BKC;
-// MAPBOX_TOKEN should be provided via config.js (which is gitignored to avoid pushing secrets)
+// MAPBOX_TOKEN is exposed on window.MAPBOX_TOKEN by config.js.
+// config.js is gitignored locally; on Vercel it is generated at build time from
+// the MAPBOX_TOKEN environment variable via scripts/build-config.js.
 const MAPBOX_TOKEN = window.MAPBOX_TOKEN || "REPLACE_WITH_YOUR_MAPBOX_TOKEN";
 
 /* ---- Tunable map defaults (client config may override) ---- */
